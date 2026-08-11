@@ -1,0 +1,118 @@
+name: Buddy's API Health Check
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Buddy's API health
+        run: |
+          HTTP_STATUS=$(curl \
+            --silent \
+            --output /tmp/response.txt \
+            --write-out "%{http_code}" \
+            --max-time 20 \
+            "${{ secrets.BUDDYS_HEALTH_URL }}")
+
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/response.txt
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Health check failed"
+            exit 1
+          fi
+
+      - name: Send WhatsApp success notification
+        if: success()
+        run: |
+          curl --fail --request POST \
+            "${{ secrets.COMM_API_URL }}" \
+            --header "accept: */*" \
+            --header "organization-unit: CARS_TAXI" \
+            --header "bussiness-unit: AUTO" \
+            --header "channel: API" \
+            --header "accept-language: EN" \
+            --header "source: Buddysapp" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "priority": 1,
+              "data": {
+                "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
+                "type": "template",
+                "body": {
+                  "template": {
+                    "name": "driver_general",
+                    "language": {
+                      "code": "en_US"
+                    },
+                    "components": [
+                      {
+                        "type": "body",
+                        "parameters": [
+                          {
+                            "type": "TEXT",
+                            "text": "✅ Buddy API health check is OK."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "modes": [
+                {
+                  "type": "WHATSAPP",
+                  "provider": "FACEBOOK"
+                }
+              ]
+            }'
+
+      - name: Send WhatsApp failure notification
+        if: failure()
+        run: |
+          curl --fail --request POST \
+            "${{ secrets.COMM_API_URL }}" \
+            --header "accept: */*" \
+            --header "organization-unit: CARS_TAXI" \
+            --header "bussiness-unit: AUTO" \
+            --header "channel: API" \
+            --header "accept-language: EN" \
+            --header "source: Buddysapp" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "priority": 1,
+              "data": {
+                "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
+                "type": "template",
+                "body": {
+                  "template": {
+                    "name": "driver_general",
+                    "language": {
+                      "code": "en_US"
+                    },
+                    "components": [
+                      {
+                        "type": "body",
+                        "parameters": [
+                          {
+                            "type": "TEXT",
+                            "text": "🚨 Buddy API health check FAILED. Please investigate."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "modes": [
+                {
+                  "type": "WHATSAPP",
+                  "provider": "FACEBOOK"
+                }
+              ]
+            }'
