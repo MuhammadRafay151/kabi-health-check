@@ -19,8 +19,18 @@ jobs:
             --max-time 20 \
             "${{ secrets.BUDDYS_HEALTH_URL }}")
 
+          RESPONSE=$(cat /tmp/response.txt)
+
           echo "HTTP status: $HTTP_STATUS"
-          cat /tmp/response.txt
+          echo "Response: $RESPONSE"
+
+          # Make the values available to subsequent steps
+          {
+            echo "HTTP_STATUS=$HTTP_STATUS"
+            echo "RESPONSE<<EOF"
+            echo "$RESPONSE"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
 
           if [ "$HTTP_STATUS" -ne 200 ]; then
             echo "Health check failed"
@@ -39,38 +49,42 @@ jobs:
             --header "accept-language: EN" \
             --header "source: Buddysapp" \
             --header "Content-Type: application/json" \
-            --data '{
-              "priority": 1,
-              "data": {
-                "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
-                "type": "template",
-                "body": {
-                  "template": {
-                    "name": "driver_general",
-                    "language": {
-                      "code": "en_US"
-                    },
-                    "components": [
-                      {
-                        "type": "body",
-                        "parameters": [
-                          {
-                            "type": "TEXT",
-                            "text": "✅ Buddy API health check is OK."
-                          }
-                        ]
-                      }
-                    ]
+            --data "$(jq -n \
+              --arg number "${{ secrets.WHATSAPP_NUMBER }}" \
+              --arg response "$RESPONSE" \
+              --arg status "$HTTP_STATUS" \
+              '{
+                priority: 1,
+                data: {
+                  to: [$number],
+                  type: "template",
+                  body: {
+                    template: {
+                      name: "driver_general",
+                      language: {
+                        code: "en_US"
+                      },
+                      components: [
+                        {
+                          type: "body",
+                          parameters: [
+                            {
+                              type: "TEXT",
+                              text: ("✅ Buddy API health check is OK.\nHTTP Status: " + $status + "\nResponse: " + $response)
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   }
-                }
-              },
-              "modes": [
-                {
-                  "type": "WHATSAPP",
-                  "provider": "FACEBOOK"
-                }
-              ]
-            }'
+                },
+                modes: [
+                  {
+                    type: "WHATSAPP",
+                    provider: "FACEBOOK"
+                  }
+                ]
+              }')"
 
       - name: Send WhatsApp failure notification
         if: failure()
@@ -84,35 +98,39 @@ jobs:
             --header "accept-language: EN" \
             --header "source: Buddysapp" \
             --header "Content-Type: application/json" \
-            --data '{
-              "priority": 1,
-              "data": {
-                "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
-                "type": "template",
-                "body": {
-                  "template": {
-                    "name": "driver_general",
-                    "language": {
-                      "code": "en_US"
-                    },
-                    "components": [
-                      {
-                        "type": "body",
-                        "parameters": [
-                          {
-                            "type": "TEXT",
-                            "text": "🚨 Buddy API health check FAILED. Please investigate."
-                          }
-                        ]
-                      }
-                    ]
+            --data "$(jq -n \
+              --arg number "${{ secrets.WHATSAPP_NUMBER }}" \
+              --arg response "${RESPONSE:-No response received}" \
+              --arg status "${HTTP_STATUS:-Request failed}" \
+              '{
+                priority: 1,
+                data: {
+                  to: [$number],
+                  type: "template",
+                  body: {
+                    template: {
+                      name: "driver_general",
+                      language: {
+                        code: "en_US"
+                      },
+                      components: [
+                        {
+                          type: "body",
+                          parameters: [
+                            {
+                              type: "TEXT",
+                              text: ("🚨 Buddy API health check FAILED.\nHTTP Status: " + $status + "\nResponse: " + $response)
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   }
-                }
-              },
-              "modes": [
-                {
-                  "type": "WHATSAPP",
-                  "provider": "FACEBOOK"
-                }
-              ]
-            }'
+                },
+                modes: [
+                  {
+                    type: "WHATSAPP",
+                    provider: "FACEBOOK"
+                  }
+                ]
+              }')"
