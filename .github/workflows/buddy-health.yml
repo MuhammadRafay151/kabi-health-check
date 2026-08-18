@@ -27,50 +27,50 @@ jobs:
             exit 1
           fi
 
-      - name: Send WhatsApp success notification
-        if: success()
-        run: |
-          curl --fail --request POST \
-            "${{ secrets.COMM_API_URL }}" \
-            --header "accept: */*" \
-            --header "organization-unit: CARS_TAXI" \
-            --header "bussiness-unit: AUTO" \
-            --header "channel: API" \
-            --header "accept-language: EN" \
-            --header "source: Buddysapp" \
-            --header "Content-Type: application/json" \
-            --data '{
-              "priority": 1,
-              "data": {
-                "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
-                "type": "template",
-                "body": {
-                  "template": {
-                    "name": "driver_general",
-                    "language": {
-                      "code": "en_US"
-                    },
-                    "components": [
-                      {
-                        "type": "body",
-                        "parameters": [
-                          {
-                            "type": "TEXT",
-                            "text": "✅ Buddy API health check is OK."
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              },
-              "modes": [
-                {
-                  "type": "WHATSAPP",
-                  "provider": "FACEBOOK"
-                }
-              ]
-            }'
+      # - name: Send WhatsApp success notification
+      #   if: success()
+      #   run: |
+      #     curl --fail --request POST \
+      #       "${{ secrets.COMM_API_URL }}" \
+      #       --header "accept: */*" \
+      #       --header "organization-unit: CARS_TAXI" \
+      #       --header "bussiness-unit: AUTO" \
+      #       --header "channel: API" \
+      #       --header "accept-language: EN" \
+      #       --header "source: Buddysapp" \
+      #       --header "Content-Type: application/json" \
+      #       --data '{
+      #         "priority": 1,
+      #         "data": {
+      #           "to": ["${{ secrets.WHATSAPP_NUMBER }}"],
+      #           "type": "template",
+      #           "body": {
+      #             "template": {
+      #               "name": "driver_general",
+      #               "language": {
+      #                 "code": "en_US"
+      #               },
+      #               "components": [
+      #                 {
+      #                   "type": "body",
+      #                   "parameters": [
+      #                     {
+      #                       "type": "TEXT",
+      #                       "text": "✅ Buddy API health check is OK."
+      #                     }
+      #                   ]
+      #                 }
+      #               ]
+      #             }
+      #           }
+      #         },
+      #         "modes": [
+      #           {
+      #             "type": "WHATSAPP",
+      #             "provider": "FACEBOOK"
+      #           }
+      #         ]
+      #       }'
 
       - name: Send WhatsApp failure notification
         if: failure()
